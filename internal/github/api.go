@@ -54,6 +54,9 @@ func (a *APIClient) GetStarredRepositories(ctx context.Context, username string,
 		},
 	}
 
+	// Note: GitHub API doesn't support since parameter for starred repositories
+	// We'll implement incremental fetching at the service layer using sort and pagination
+
 	// Set defaults
 	if listOpts.Sort == "" {
 		listOpts.Sort = "created"

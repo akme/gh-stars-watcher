@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/akme/gh-stars-watcher/internal/auth"
+	"github.com/akme/gh-stars-watcher/internal/config"
 	"github.com/akme/gh-stars-watcher/internal/github"
 	"github.com/akme/gh-stars-watcher/internal/monitor"
 	"github.com/akme/gh-stars-watcher/internal/storage"
@@ -94,8 +95,9 @@ func createMonitoringService() (*monitor.Service, error) {
 		tokenManager = auth.NewPromptTokenManager(keychainAuth)
 	}
 
-	// Create monitoring service
-	service := monitor.NewService(githubClient, jsonStorage, tokenManager)
+	// Create monitoring service with default configuration
+	cfg := config.DefaultConfig()
+	service := monitor.NewService(githubClient, jsonStorage, tokenManager, cfg)
 
 	return service, nil
 }

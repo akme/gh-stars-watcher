@@ -61,18 +61,24 @@ func (f *OutputFormatter) FormatMonitorResult(result *monitor.MonitorResult) err
 		return nil
 	}
 
-	if len(result.NewRepositories) == 0 {
+	// Get new repositories from changes
+	var newRepos []storage.Repository
+	if result.Changes != nil {
+		newRepos = result.Changes.NewStars
+	}
+
+	if len(newRepos) == 0 {
 		fmt.Fprintf(f.writer, "No new starred repositories found for %s.\n", result.Username)
 		fmt.Fprintf(f.writer, "Total repositories: %d\n", result.TotalRepositories)
 		return nil
 	}
 
 	fmt.Fprintf(f.writer, "🌟 %s has starred %d new repositories!\n\n",
-		result.Username, len(result.NewRepositories))
+		result.Username, len(newRepos))
 
 	// Sort by starred date (most recent first)
-	sorted := make([]storage.Repository, len(result.NewRepositories))
-	copy(sorted, result.NewRepositories)
+	sorted := make([]storage.Repository, len(newRepos))
+	copy(sorted, newRepos)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].StarredAt.After(sorted[j].StarredAt)
 	})
