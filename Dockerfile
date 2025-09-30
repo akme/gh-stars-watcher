@@ -65,6 +65,17 @@ COPY --from=builder /go/bin/star-watcher /usr/local/bin/star-watcher
 COPY --from=builder --chown=65532:65532 /tmp/star-watcher /home/nonroot
 COPY --from=builder --chown=65532:65532 /tmp/home/nonroot /home/nonroot
 
+# OCI annotations for image metadata
+LABEL org.opencontainers.image.title="GitHub Stars Watcher" \
+      org.opencontainers.image.description="Monitor GitHub user's starred repositories for changes with multi-architecture Docker support" \
+      org.opencontainers.image.vendor="akme" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.documentation="https://github.com/akme/gh-stars-watcher/blob/main/README.md" \
+      org.opencontainers.image.source="https://github.com/akme/gh-stars-watcher" \
+      org.opencontainers.image.url="https://github.com/akme/gh-stars-watcher" \
+      maintainer="akme" \
+      org.opencontainers.image.authors="akme"
+
 # Use nonroot user (numeric for scratch compatibility)
 USER 65532:65532
 WORKDIR /home/nonroot

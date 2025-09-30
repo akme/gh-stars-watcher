@@ -33,9 +33,21 @@ build_and_push() {
     echo "🚀 Building multi-architecture image: $IMAGE_NAME:$tag"
     echo "📋 Platforms: $PLATFORMS"
     
+    # Get current timestamp and git info for labels
+    local build_date
+    local git_sha
+    local git_ref
+    build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    git_sha=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    git_ref=$(git symbolic-ref -q --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null || echo "unknown")
+    
     docker buildx build \
         --platform "$PLATFORMS" \
         --tag "$IMAGE_NAME:$tag" \
+        --label "org.opencontainers.image.created=$build_date" \
+        --label "org.opencontainers.image.revision=$git_sha" \
+        --label "org.opencontainers.image.ref.name=$git_ref" \
+        --label "org.opencontainers.image.version=$tag" \
         $push_flag \
         --progress=plain \
         .
@@ -62,8 +74,16 @@ case "${1:-local}" in
         ;;
     "test")
         echo "🧪 Test build (no output)..."
+        # Get current timestamp and git info for labels
+        build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        git_sha=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        git_ref=$(git symbolic-ref -q --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null || echo "unknown")
+        
         docker buildx build \
             --platform "$PLATFORMS" \
+            --label "org.opencontainers.image.created=$build_date" \
+            --label "org.opencontainers.image.revision=$git_sha" \
+            --label "org.opencontainers.image.ref.name=$git_ref" \
             --progress=plain \
             .
         ;;

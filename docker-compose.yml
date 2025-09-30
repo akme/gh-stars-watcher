@@ -8,6 +8,11 @@ services:
         - linux/arm64
         - linux/arm/v7
     image: gh-stars-watcher:local
+    labels:
+      - "org.opencontainers.image.title=GitHub Stars Watcher"
+      - "org.opencontainers.image.description=Monitor GitHub user's starred repositories for changes"
+      - "org.opencontainers.image.vendor=akme"
+      - "maintainer=akme"
     environment:
       # Optional: Set GitHub token via environment
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -25,6 +30,11 @@ services:
       dockerfile: Dockerfile
       target: builder
     image: gh-stars-watcher:dev
+    labels:
+      - "org.opencontainers.image.title=GitHub Stars Watcher (Development)"
+      - "org.opencontainers.image.description=Development build with Go toolchain"
+      - "org.opencontainers.image.vendor=akme"
+      - "maintainer=akme"
     working_dir: /app
     volumes:
       - .:/app:ro

@@ -45,6 +45,17 @@ jobs:
                       type=semver,pattern={{major}}.{{minor}}
                       type=semver,pattern={{major}}
                       type=raw,value=latest,enable={{is_default_branch}}
+                  labels: |
+                      org.opencontainers.image.title=GitHub Stars Watcher
+                      org.opencontainers.image.description=Monitor GitHub user's starred repositories for changes with multi-architecture Docker support
+                      org.opencontainers.image.vendor=akme
+                      org.opencontainers.image.licenses=MIT
+                      org.opencontainers.image.documentation=https://github.com/${{ github.repository }}/blob/main/README.md
+                      org.opencontainers.image.source=https://github.com/${{ github.repository }}
+                      org.opencontainers.image.url=https://github.com/${{ github.repository }}
+                      maintainer=akme
+                      org.opencontainers.image.authors=akme
+                      com.docker.extension.publisher-url=https://github.com/${{ github.repository }}
 
             - name: Build and push Docker image
               uses: docker/build-push-action@v5
