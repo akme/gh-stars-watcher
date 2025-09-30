@@ -60,13 +60,13 @@ func runMonitor(cmd *cobra.Command, args []string) error {
 	result, err := service.MonitorUser(ctx, username, getStateFilePath(username))
 	if err != nil {
 		if !quiet {
-			fmt.Println() // New line after progress
+			fmt.Print("\r\033[K") // Clear the line completely before error
 		}
 		return fmt.Errorf("monitoring failed: %w", err)
 	}
 
 	if !quiet {
-		fmt.Println() // New line after progress
+		fmt.Print("\r\033[K") // Clear the line completely before results
 	}
 
 	// Format and display results
@@ -95,9 +95,49 @@ func createMonitoringService() (*monitor.Service, error) {
 		tokenManager = auth.NewPromptTokenManager(keychainAuth)
 	}
 
-	// Create monitoring service with default configuration
+	// Create monitoring service with configuration adjusted for verbosity
 	cfg := config.DefaultConfig()
+
+	// Adjust logging configuration based on CLI flags
+	if quiet {
+		cfg.Logging.LogLevel = "error"
+		cfg.Logging.EnableAuditLog = false
+		cfg.Logging.EnablePerformanceMetrics = false
+		cfg.Logging.LogAPICallsSaved = false
+	} else if verbose {
+		cfg.Logging.LogLevel = "debug"
+		cfg.Logging.EnableAuditLog = true
+		cfg.Logging.EnablePerformanceMetrics = true
+		cfg.Logging.LogAPICallsSaved = true
+	} else {
+		// Normal mode - less verbose than current default
+		cfg.Logging.LogLevel = "warn"
+		cfg.Logging.EnableAuditLog = false
+		cfg.Logging.EnablePerformanceMetrics = false
+		cfg.Logging.LogAPICallsSaved = false
+	}
+
 	service := monitor.NewService(githubClient, jsonStorage, tokenManager, cfg)
+
+	// Set up progress callback only for non-JSON output to avoid polluting JSON
+	if output != "json" && !quiet {
+		if verbose {
+			// Verbose mode: show all progress messages
+			service.SetProgressCallback(func(message string) {
+				// Clear the line and write the message
+				fmt.Printf("\r\033[K%s", message)
+			})
+		} else {
+			// Normal mode: only show essential progress messages
+			service.SetProgressCallback(func(message string) {
+				// Only show high-level progress, filter out technical details
+				if isEssentialProgress(message) {
+					// Clear the line and write the message
+					fmt.Printf("\r\033[K%s", message)
+				}
+			})
+		}
+	}
 
 	return service, nil
 }
@@ -112,4 +152,27 @@ func isInteractiveTerminal() bool {
 
 	// Check if stdin is a pipe/redirect (non-interactive)
 	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
+// isEssentialProgress determines if a progress message should be shown in normal (non-verbose) mode
+func isEssentialProgress(message string) bool {
+	essentialPrefixes := []string{
+		"Starting monitor",
+		"Validating user",
+		"Loading previous state",
+		"Fetching starred repositories",
+		"Analyzing repository changes",
+		"Updating state",
+		"Monitor complete",
+		"Full sync completed",
+		"Incremental fetch completed",
+	}
+
+	for _, prefix := range essentialPrefixes {
+		if len(message) >= len(prefix) && message[:len(prefix)] == prefix {
+			return true
+		}
+	}
+
+	return false
 }

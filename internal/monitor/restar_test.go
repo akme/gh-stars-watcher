@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -9,90 +8,124 @@ import (
 	"github.com/akme/gh-stars-watcher/internal/storage"
 )
 
-func TestReStarDetection(t *testing.T) {
-	// Create a service with default config
+func TestService_findRepositoryChanges_ReStarDetection(t *testing.T) {
 	cfg := config.DefaultConfig()
 	service := NewService(nil, nil, nil, cfg)
 
-	// Create test repositories - simulate the scenario
-	oldTime := time.Date(2025, 9, 29, 21, 12, 41, 0, time.UTC)
-	newTime := time.Date(2025, 9, 30, 1, 30, 0, 0, time.UTC) // 4+ hours later (should be detected as new star)
+	baseTime := time.Date(2025, 9, 29, 21, 12, 41, 0, time.UTC)
 
-	// Previous state - repo exists with old timestamp
-	previousRepos := []storage.Repository{
+	tests := []struct {
+		name         string
+		previous     []storage.Repository
+		current      []storage.Repository
+		wantNewStars []string
+		wantReStars  []string
+	}{
 		{
-			FullName:    "test/repo1",
-			StarredAt:   oldTime,
-			Description: "Test repository 1",
-			StarCount:   100,
+			name: "DetectReStarAsNewStar",
+			previous: []storage.Repository{
+				{
+					FullName:    "test/repo1",
+					StarredAt:   baseTime,
+					Description: "Test repository 1",
+					StarCount:   100,
+				},
+			},
+			current: []storage.Repository{
+				{
+					FullName:    "test/repo1",
+					StarredAt:   baseTime.Add(4 * time.Hour), // Much newer - re-starred
+					Description: "Test repository 1",
+					StarCount:   100,
+				},
+			},
+			wantNewStars: []string{"test/repo1"},
+			wantReStars:  []string{},
 		},
 		{
-			FullName:    "test/repo2",
-			StarredAt:   oldTime.Add(-time.Hour), // Even older
-			Description: "Test repository 2",
-			StarCount:   200,
+			name: "DetectMinorUpdateAsReStar",
+			previous: []storage.Repository{
+				{
+					FullName:    "test/repo2",
+					StarredAt:   baseTime,
+					Description: "Test repository 2",
+					StarCount:   200,
+				},
+			},
+			current: []storage.Repository{
+				{
+					FullName:    "test/repo2",
+					StarredAt:   baseTime.Add(5 * time.Minute), // Small diff - minor update
+					Description: "Test repository 2",
+					StarCount:   200,
+				},
+			},
+			wantNewStars: []string{},
+			wantReStars:  []string{"test/repo2"},
+		},
+		{
+			name: "DetectTrulyNewRepo",
+			previous: []storage.Repository{
+				{
+					FullName:    "test/existing",
+					StarredAt:   baseTime,
+					Description: "Existing repo",
+					StarCount:   50,
+				},
+			},
+			current: []storage.Repository{
+				{
+					FullName:    "test/existing",
+					StarredAt:   baseTime,
+					Description: "Existing repo",
+					StarCount:   50,
+				},
+				{
+					FullName:    "test/new-repo",
+					StarredAt:   baseTime.Add(time.Hour),
+					Description: "New repository",
+					StarCount:   10,
+				},
+			},
+			wantNewStars: []string{"test/new-repo"},
+			wantReStars:  []string{},
 		},
 	}
 
-	// Current state - same repo but with newer timestamp (simulating re-star)
-	currentRepos := []storage.Repository{
-		{
-			FullName:    "test/repo1",
-			StarredAt:   newTime, // Much newer timestamp - should be detected as new star
-			Description: "Test repository 1",
-			StarCount:   100,
-		},
-		{
-			FullName:    "test/repo2",
-			StarredAt:   oldTime.Add(-time.Hour), // Same as before
-			Description: "Test repository 2",
-			StarCount:   200,
-		},
-		{
-			FullName:    "test/repo3", // Truly new repo
-			StarredAt:   newTime.Add(time.Minute),
-			Description: "Test repository 3",
-			StarCount:   50,
-		},
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			changes := service.findRepositoryChanges(tt.previous, tt.current)
 
-	// Test the change detection
-	changes := service.findRepositoryChanges(previousRepos, currentRepos)
+			// Check new stars
+			gotNewStars := make([]string, len(changes.NewStars))
+			for i, repo := range changes.NewStars {
+				gotNewStars[i] = repo.FullName
+			}
+			if !slicesEqual(gotNewStars, tt.wantNewStars) {
+				t.Errorf("NewStars = %v, want %v", gotNewStars, tt.wantNewStars)
+			}
 
-	fmt.Printf("Change detection results:\n")
-	fmt.Printf("New stars: %d\n", len(changes.NewStars))
-	for _, repo := range changes.NewStars {
-		fmt.Printf("  - %s (starred at: %v)\n", repo.FullName, repo.StarredAt)
+			// Check re-stars
+			gotReStars := make([]string, len(changes.ReStars))
+			for i, repo := range changes.ReStars {
+				gotReStars[i] = repo.FullName
+			}
+			if !slicesEqual(gotReStars, tt.wantReStars) {
+				t.Errorf("ReStars = %v, want %v", gotReStars, tt.wantReStars)
+			}
+		})
 	}
-	fmt.Printf("Re-stars: %d\n", len(changes.ReStars))
-	for _, repo := range changes.ReStars {
-		fmt.Printf("  - %s (starred at: %v)\n", repo.FullName, repo.StarredAt)
-	}
-	fmt.Printf("Updated: %d\n", len(changes.Updated))
-	fmt.Printf("Unstars: %d\n", len(changes.Unstars))
-	fmt.Printf("Total changes: %d\n", changes.TotalChanges)
+}
 
-	// Assertions
-	if len(changes.NewStars) != 2 {
-		t.Errorf("Expected 2 new stars (test/repo1 as re-star + test/repo3 as truly new), got %d", len(changes.NewStars))
+// slicesEqual compares two string slices for equality
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
 	}
-
-	// Check that test/repo1 was detected as a new star due to significant timestamp difference
-	foundReStarAsNewStar := false
-	foundNewRepo := false
-	for _, repo := range changes.NewStars {
-		if repo.FullName == "test/repo1" {
-			foundReStarAsNewStar = true
+	for i := range a {
+		if a[i] != b[i] {
+			return false
 		}
-		if repo.FullName == "test/repo3" {
-			foundNewRepo = true
-		}
 	}
-
-	if !foundReStarAsNewStar {
-		t.Error("Expected test/repo1 to be detected as new star due to significant timestamp difference")
-	}
-	if !foundNewRepo {
-		t.Error("Expected test/repo3 to be detected as truly new star")
-	}
+	return true
 }
