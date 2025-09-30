@@ -29,6 +29,90 @@ cd gh-stars-watcher
 make build
 ```
 
+## Docker
+
+The application is available as a multi-architecture Docker image supporting `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
+
+### Quick Start with Docker
+
+```bash
+# Monitor a user with Docker
+docker run --rm ghcr.io/akme/gh-stars-watcher:latest monitor octocat
+
+# With JSON output
+docker run --rm ghcr.io/akme/gh-stars-watcher:latest monitor octocat --output json
+
+# Monitor multiple users
+docker run --rm ghcr.io/akme/gh-stars-watcher:latest monitor "octocat,github,torvalds"
+```
+
+### Persistent State Storage
+
+To maintain state between runs, mount a volume:
+
+```bash
+# Create a named volume for state persistence
+docker volume create star-watcher-data
+
+# Run with persistent state
+docker run --rm \
+  -v star-watcher-data:/home/nonroot/.star-watcher \
+  ghcr.io/akme/gh-stars-watcher:latest \
+  monitor octocat
+```
+
+### With Authentication
+
+```bash
+# Using environment variable
+docker run --rm \
+  -e GITHUB_TOKEN=your_token_here \
+  ghcr.io/akme/gh-stars-watcher:latest \
+  monitor octocat --auth
+
+# Using Docker secrets (recommended for production)
+echo "your_token_here" | docker secret create github_token -
+docker run --rm \
+  --secret github_token \
+  -e GITHUB_TOKEN_FILE=/run/secrets/github_token \
+  ghcr.io/akme/gh-stars-watcher:latest \
+  monitor octocat --auth
+```
+
+### Docker Compose
+
+Use the included `docker-compose.yml` for easy local development:
+
+```bash
+# Run with Docker Compose
+GITHUB_TOKEN=your_token docker-compose up star-watcher
+
+# Development mode with live code reload
+docker-compose up star-watcher-dev
+```
+
+### Building Multi-Architecture Images
+
+```bash
+# Build locally
+make docker-build
+
+# Test multi-arch build
+make docker-build-multiarch
+
+# Build and push to registry
+make docker-push
+
+# Build and push with version tag
+make docker-push-version VERSION=v1.0.0
+
+# Build with custom UPX version
+UPX_VERSION=4.2.4 make docker-build
+
+# Build with environment variables
+UPX_VERSION=5.0.2 VERSION=v1.2.0 make docker-push-version
+```
+
 ## Usage
 
 ### Basic Usage

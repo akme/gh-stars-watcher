@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+tests/
+coverage.out
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Dependencies (will be downloaded during build)
+vendor/
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github/
+scripts/dev.sh
+
+# Specs and documentation
+specs/
+initial-idea.prompt.md
+multi-user.prompt.md

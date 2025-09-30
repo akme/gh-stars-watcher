@@ -1,0 +1,45 @@
+services:
+  star-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - UPX_VERSION=${UPX_VERSION:-5.0.2}
+      platforms:
+        - linux/amd64
+        - linux/arm64
+        - linux/arm/v7
+    image: gh-stars-watcher:local
+    environment:
+      # Optional: Set GitHub token via environment
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    volumes:
+      # Mount state directory for persistence
+      - star-watcher-data:/home/nonroot/.star-watcher:rw
+    user: "65532:65532" # nonroot user
+    # Example command - monitor a user
+    command: ["monitor", "octocat", "--output", "json"]
+
+  # Development service with volume mount for live development
+  star-watcher-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+      args:
+        - UPX_VERSION=${UPX_VERSION:-5.0.2}
+    image: gh-stars-watcher:dev
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+      - star-watcher-cache:/go/pkg/mod:rw
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - CGO_ENABLED=0
+    command: ["go", "run", "./cmd/star-watcher", "--help"]
+
+volumes:
+  star-watcher-data:
+    driver: local
+  star-watcher-cache:
+    driver: local
