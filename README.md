@@ -1,13 +1,15 @@
 # GitHub Stars Monitor
 
-A command-line tool that tracks changes in a user's starred repositories, showing only newly starred repositories between runs.
+A high-performance command-line tool that tracks changes in GitHub users' starred repositories, showing only newly starred repositories between runs. Designed for automation, monitoring workflows, and integration with other development tools.
 
 ## Features
 
 - **Incremental Monitoring**: Only shows newly starred repositories since the last run
+- **Multi-User Support**: Monitor multiple GitHub users simultaneously with parallel processing
 - **First Run Baseline**: Establishes a baseline on the first run without showing output
 - **Multiple Output Formats**: Support for text (human-readable) and JSON formats
-- **Secure Authentication**: Uses OS keychain for token storage with interactive fallback
+- **Optional Authentication**: Works without tokens (60 req/hour) or with tokens (5000 req/hour) - only prompts when `--auth` flag is used
+- **Secure Token Storage**: Uses OS keychain for token storage with interactive fallback
 - **Rate Limit Handling**: Intelligent rate limit detection and user-friendly error messages
 - **Clean Architecture**: Well-structured codebase with interfaces and dependency injection
 - **Comprehensive Error Handling**: User-friendly error messages with actionable guidance
@@ -31,10 +33,24 @@ make build
 
 ### Basic Usage
 
-Monitor a user's starred repositories:
+Monitor a single user's starred repositories:
 
 ```bash
 ./bin/star-watcher monitor octocat
+```
+
+### Multi-User Monitoring
+
+Monitor multiple users simultaneously with comma-separated usernames:
+
+```bash
+./bin/star-watcher monitor "octocat,github,torvalds"
+```
+
+Multi-user example with JSON output:
+
+```bash
+./bin/star-watcher monitor "octocat,github" --output json
 ```
 
 ### First Run
@@ -71,6 +87,34 @@ Total repositories: 5
 Previous check: 2024-01-14 10:30:45
 ```
 
+### Multi-User Output
+
+When monitoring multiple users, output is grouped by username:
+
+```bash
+$ ./bin/star-watcher monitor "octocat,github"
+🌟 octocat has starred 1 new repository!
+
+⭐ octocat/Hello-World
+   My first repository on GitHub!
+   Language: None | Stars: 1
+   Starred: 2024-01-15
+   https://github.com/octocat/Hello-World
+
+🌟 github has starred 1 new repository!
+
+⭐ github/docs
+   The open-source repo for docs.github.com
+   Language: JavaScript | Stars: 2150
+   Starred: 2024-01-16
+   https://github.com/github/docs
+
+=== Summary ===
+Total users monitored: 2
+Users with new stars: 2
+Total new repositories: 2
+```
+
 ### JSON Output
 
 Get structured output in JSON format:
@@ -79,6 +123,7 @@ Get structured output in JSON format:
 ./bin/star-watcher monitor octocat --output json
 ```
 
+Single user JSON output:
 ```json
 {
   "username": "octocat",
@@ -104,6 +149,43 @@ Get structured output in JSON format:
     "used": 15
   },
   "is_first_run": false
+}
+```
+
+Multi-user JSON output:
+```json
+{
+  "results": [
+    {
+      "username": "octocat",
+      "new_repositories": [
+        {
+          "full_name": "octocat/Hello-World",
+          "description": "My first repository on GitHub!",
+          "star_count": 1,
+          "updated_at": "2024-01-15T10:30:00Z",
+          "url": "https://github.com/octocat/Hello-World",
+          "starred_at": "2024-01-15T12:00:00Z",
+          "language": "",
+          "private": false
+        }
+      ],
+      "total_repositories": 3,
+      "is_first_run": false
+    },
+    {
+      "username": "github",
+      "new_repositories": [],
+      "total_repositories": 50,
+      "is_first_run": false
+    }
+  ],
+  "summary": {
+    "total_users": 2,
+    "users_with_new_stars": 1,
+    "total_new_repositories": 1
+  },
+  "timestamp": "2024-01-16T14:20:30Z"
 }
 ```
 
@@ -136,14 +218,19 @@ Remove all stored states:
 star-watcher monitor [username] [flags]
 ```
 
-Monitor a GitHub user's starred repositories for changes.
+Monitor GitHub user(s) starred repositories for changes. Username can be a single user or comma-separated list for multi-user monitoring.
+
+**Flags:**
+- `--auth`: Prompt for GitHub token authentication (optional, increases rate limits)
+- All global flags also apply
 
 **Examples:**
 ```bash
 star-watcher monitor octocat
 star-watcher monitor octocat --output json
+star-watcher monitor "octocat,github,akme"
+star-watcher monitor octocat --auth --verbose
 star-watcher monitor octocat --state-file ./custom-state.json
-star-watcher monitor octocat --verbose
 ```
 
 ### Cleanup Command
@@ -166,11 +253,30 @@ star-watcher cleanup --all
 
 ## Authentication
 
-The tool supports multiple authentication methods:
+**Authentication is completely optional!** The tool works without authentication, but provides higher rate limits when authenticated.
+
+### Authentication Options
+
+1. **No Authentication** (default): 60 requests per hour - sufficient for monitoring a few users
+2. **With Authentication**: 5000 requests per hour - use the `--auth` flag to enable
+
+### Authentication Methods (when using `--auth`)
 
 1. **Environment Variable**: Set `GITHUB_TOKEN` environment variable
 2. **OS Keychain**: Tokens are securely stored in the system keychain
 3. **Interactive Prompt**: If no token is found, you'll be prompted to enter one
+
+### Using Authentication
+
+Only prompt for authentication when you need higher rate limits:
+
+```bash
+# Use without authentication (60 req/hour)
+./bin/star-watcher monitor octocat
+
+# Use with authentication (5000 req/hour)
+./bin/star-watcher monitor octocat --auth
+```
 
 ### Creating a GitHub Token
 
@@ -187,9 +293,11 @@ The tool supports multiple authentication methods:
 
 The tool stores state in JSON files under `~/.star-watcher/`:
 
-- `~/.star-watcher/{username}.json`: Contains the baseline of starred repositories
+- `~/.star-watcher/{username}.json`: Contains the baseline of starred repositories for each user
 - Files include repository metadata, star counts, and timestamps
 - State files are atomic-write protected to prevent corruption
+- Each user has independent state management for multi-user monitoring
+- Significantly reduced file sizes - removed unnecessary audit logging to keep files minimal
 
 ## Rate Limiting
 
@@ -246,8 +354,10 @@ The project follows standard Go conventions and uses:
 
 - **Startup Time**: ~20ms for CLI operations
 - **API Performance**: ~50 seconds for 3000 repositories (limited by GitHub API)
-- **State File Size**: ~1MB for 3000 repositories
+- **State File Size**: Significantly reduced - removed unnecessary audit logging (timestamps) for minimal file sizes
 - **Memory Usage**: Minimal - processes repositories in batches
+- **Multi-User Processing**: Parallel processing for multiple users with goroutines
+- **Rate Limit Optimization**: Intelligent handling for both authenticated (5000/hour) and unauthenticated (60/hour) usage
 
 ## Troubleshooting
 
