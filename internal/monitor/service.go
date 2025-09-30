@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/akme/gh-stars-watcher/internal/auth"
@@ -243,13 +245,18 @@ func (s *Service) MonitorUser(ctx context.Context, username, stateFilePath strin
 		s.logDebug("API calls saved through incremental fetching", "api_calls_saved", apiCallsSaved)
 	}
 
+	var rateLimitInfo github.RateLimitInfo
+	if rateLimit != nil {
+		rateLimitInfo = *rateLimit
+	}
+
 	return &MonitorResult{
 		Username:           username,
 		Changes:            changes,
 		TotalRepositories:  len(currentRepos),
 		PreviousCheck:      previousState.LastCheck,
 		CurrentCheck:       updatedState.LastCheck,
-		RateLimit:          *rateLimit,
+		RateLimit:          rateLimitInfo,
 		IsFirstRun:         previousState.CheckCount == 0,
 		IsFullSync:         isFullSync,
 		APICallsSaved:      apiCallsSaved,
@@ -498,22 +505,27 @@ func (s *Service) fetchStarredReposWithFallback(ctx context.Context, username st
 
 // mergeRepositories merges new repositories with existing ones, handling duplicates
 func (s *Service) mergeRepositories(existing []storage.Repository, newRepos []storage.Repository) []storage.Repository {
-	// Create a map for quick lookup of existing repos
-	existingMap := make(map[string]storage.Repository)
+	repoMap := make(map[string]storage.Repository, len(existing)+len(newRepos))
+
 	for _, repo := range existing {
-		existingMap[repo.FullName] = repo
+		repoMap[repo.FullName] = repo
 	}
 
-	// Add new repos, updating if they already exist
-	for _, newRepo := range newRepos {
-		existingMap[newRepo.FullName] = newRepo
+	for _, repo := range newRepos {
+		repoMap[repo.FullName] = repo
 	}
 
-	// Convert back to slice
-	var merged []storage.Repository
-	for _, repo := range existingMap {
+	merged := make([]storage.Repository, 0, len(repoMap))
+	for _, repo := range repoMap {
 		merged = append(merged, repo)
 	}
+
+	sort.Slice(merged, func(i, j int) bool {
+		if merged[i].StarredAt.Equal(merged[j].StarredAt) {
+			return merged[i].FullName < merged[j].FullName
+		}
+		return merged[i].StarredAt.After(merged[j].StarredAt)
+	})
 
 	return merged
 }
@@ -593,22 +605,23 @@ func (s *Service) findRepositoryChanges(previous, current []storage.Repository) 
 }
 
 // isRateLimitError checks if an error is related to rate limiting
+
 func isRateLimitError(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	errStr := err.Error()
+	errStr := strings.ToLower(err.Error())
 	rateLimitPatterns := []string{
 		"rate limit",
-		"API rate limit exceeded",
-		"403 Forbidden",
+		"api rate limit exceeded",
+		"403 forbidden",
 		"secondary rate limit",
 		"abuse detection",
 	}
 
 	for _, pattern := range rateLimitPatterns {
-		if contains(errStr, pattern) {
+		if strings.Contains(errStr, pattern) {
 			return true
 		}
 	}
@@ -621,16 +634,6 @@ func extractRetryAfter(err error) time.Duration {
 	// For now, return a default duration
 	// In a real implementation, you'd parse the error message or response headers
 	return 60 * time.Second // Default 1 minute wait for rate limits
-}
-
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 // hasRepositoryChanged checks if repository metadata has changed

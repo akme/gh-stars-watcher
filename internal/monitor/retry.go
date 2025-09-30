@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/akme/gh-stars-watcher/internal/config"
@@ -136,7 +137,7 @@ func (r *RetryManager) isTemporaryError(err error) bool {
 		return false
 	}
 
-	errStr := err.Error()
+	errStr := strings.ToLower(err.Error())
 
 	// Common temporary error patterns
 	temporaryPatterns := []string{
@@ -156,21 +157,11 @@ func (r *RetryManager) isTemporaryError(err error) bool {
 	}
 
 	for _, pattern := range temporaryPatterns {
-		if findSubstring(errStr, pattern) {
+		if strings.Contains(errStr, pattern) {
 			return true
 		}
 	}
 
-	return false
-}
-
-// findSubstring performs a simple substring search
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
 	return false
 }
 
