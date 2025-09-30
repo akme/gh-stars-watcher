@@ -12,7 +12,7 @@ ARG TARGETARCH
 ARG TARGETOS
 ARG UPX_VERSION=5.0.2
 
-RUN apk update && apk add --no-cache git ca-certificates tzdata && update-ca-certificates
+RUN apk update && apk add --no-cache git ca-certificates tzdata file && update-ca-certificates
 
 # Install UPX based on target architecture
 RUN ARCH=${TARGETARCH:-amd64} && \
@@ -22,9 +22,17 @@ RUN ARCH=${TARGETARCH:-amd64} && \
         arm) UPX_ARCH="arm_linux" ;; \
         *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
     esac && \
-    wget https://github.com/upx/upx/releases/download/v${UPX_VERSION}/upx-${UPX_VERSION}-${UPX_ARCH}.tar.xz -O /tmp/upx.tar.xz && \
+    echo "Downloading UPX ${UPX_VERSION} for ${UPX_ARCH}..." && \
+    wget -q https://github.com/upx/upx/releases/download/v${UPX_VERSION}/upx-${UPX_VERSION}-${UPX_ARCH}.tar.xz -O /tmp/upx.tar.xz && \
+    echo "Verifying download..." && \
+    file /tmp/upx.tar.xz && \
+    echo "Extracting UPX binary..." && \
     tar -xJOf /tmp/upx.tar.xz upx-${UPX_VERSION}-${UPX_ARCH}/upx > /usr/local/bin/upx && \
+    echo "Setting permissions..." && \
     chmod +x /usr/local/bin/upx && \
+    echo "Verifying UPX binary..." && \
+    file /usr/local/bin/upx && \
+    /usr/local/bin/upx --version && \
     rm /tmp/upx.tar.xz
 
 WORKDIR /app
