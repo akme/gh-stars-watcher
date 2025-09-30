@@ -30,10 +30,13 @@ For single users, the command works as before. For multiple users, provide a com
 On the first run, this command establishes a baseline of currently starred repositories and shows no output.
 Subsequent runs compare against the stored state and display only newly starred repositories.
 
+By default, the tool uses unauthenticated GitHub API access (60 requests/hour). Use --auth to prompt for a token for higher rate limits (5000 requests/hour).
+
 Examples:
   star-watcher monitor octocat
   star-watcher monitor octocat,github,torvalds --output json
   star-watcher monitor user1,user2 --verbose
+  star-watcher monitor octocat --auth --verbose
   star-watcher monitor octocat --state-file ./custom-state.json`,
 	Args: cobra.ExactArgs(1),
 	RunE: runMonitor,
@@ -180,14 +183,14 @@ func createMonitoringService() (*monitor.Service, error) {
 	// Create keychain authentication with the GitHub client as validator
 	keychainAuth := auth.NewKeychainTokenManager(githubClient)
 
-	// Check if we should use interactive prompts (not in tests or CI)
+	// Check if we should use interactive prompts based on CLI flag and environment
 	var tokenManager auth.TokenManager
-	if os.Getenv("CI") != "" || !isInteractiveTerminal() {
-		// Non-interactive mode: don't prompt for tokens
-		tokenManager = keychainAuth
-	} else {
-		// Interactive mode: allow prompting
+	if authToken && os.Getenv("CI") == "" && isInteractiveTerminal() {
+		// Interactive mode with explicit --auth flag: allow prompting
 		tokenManager = auth.NewPromptTokenManager(keychainAuth)
+	} else {
+		// Default mode: only use existing tokens (keychain/environment), don't prompt
+		tokenManager = keychainAuth
 	}
 
 	// Create monitoring service with configuration adjusted for verbosity

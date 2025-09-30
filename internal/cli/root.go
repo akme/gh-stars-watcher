@@ -14,6 +14,7 @@ var (
 	quiet     bool
 	stateFile string
 	output    string
+	authToken bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -40,6 +41,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "quiet output (errors only)")
 	rootCmd.PersistentFlags().StringVar(&stateFile, "state-file", "", "custom state file path (default: ~/.star-watcher/{username}.json)")
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "text", "output format: text, json")
+	rootCmd.PersistentFlags().BoolVarP(&authToken, "auth", "a", false, "prompt for GitHub token for authenticated requests (higher rate limits)")
 
 	// Add subcommands
 	rootCmd.AddCommand(monitorCmd)
@@ -81,7 +83,7 @@ func getStateFilePath(username string) string {
 	}
 
 	stateDir := fmt.Sprintf("%s/.star-watcher", homeDir)
-	if err := os.MkdirAll(stateDir, 0755); err != nil {
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		return fmt.Sprintf(".star-watcher-%s.json", username)
 	}
 
