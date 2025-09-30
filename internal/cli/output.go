@@ -391,3 +391,115 @@ func (f *OutputFormatter) calculateStats(repositories []storage.Repository) Repo
 
 	return stats
 }
+
+// FormatMultiUserResults formats monitoring results for multiple users
+func (f *OutputFormatter) FormatMultiUserResults(results map[string]*monitor.MonitorResult, errors map[string]error) error {
+	if f.format == "json" {
+		return f.formatMultiUserJSON(results, errors)
+	}
+
+	return f.formatMultiUserText(results, errors)
+}
+
+// formatMultiUserJSON outputs multi-user results in JSON format
+func (f *OutputFormatter) formatMultiUserJSON(results map[string]*monitor.MonitorResult, errors map[string]error) error {
+	output := struct {
+		Results   map[string]*monitor.MonitorResult `json:"results"`
+		Errors    map[string]string                 `json:"errors,omitempty"`
+		Timestamp string                            `json:"timestamp"`
+	}{
+		Results:   results,
+		Errors:    make(map[string]string),
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	// Convert errors to strings for JSON serialization
+	for username, err := range errors {
+		output.Errors[username] = err.Error()
+	}
+
+	encoder := json.NewEncoder(f.writer)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(output)
+}
+
+// formatMultiUserText outputs multi-user results in human-readable text format
+func (f *OutputFormatter) formatMultiUserText(results map[string]*monitor.MonitorResult, errors map[string]error) error {
+	totalUsers := len(results) + len(errors)
+	successCount := len(results)
+	errorCount := len(errors)
+
+	fmt.Fprintf(f.writer, "GitHub Stars Monitor - Multi-User Report\n")
+	fmt.Fprintf(f.writer, "Generated: %s\n", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(f.writer, "Users processed: %d (Success: %d, Errors: %d)\n\n", totalUsers, successCount, errorCount)
+
+	// Show errors first if any
+	if errorCount > 0 {
+		fmt.Fprintf(f.writer, "❌ ERRORS (%d)\n", errorCount)
+		fmt.Fprintf(f.writer, "%s\n", strings.Repeat("=", 50))
+		for username, err := range errors {
+			fmt.Fprintf(f.writer, "• %s: %v\n", username, err)
+		}
+		fmt.Fprintf(f.writer, "\n")
+	}
+
+	// Show successful results grouped by user
+	if successCount > 0 {
+		// Sort usernames for consistent output
+		usernames := make([]string, 0, len(results))
+		for username := range results {
+			usernames = append(usernames, username)
+		}
+		sort.Strings(usernames)
+
+		for i, username := range usernames {
+			result := results[username]
+
+			fmt.Fprintf(f.writer, "👤 USER: %s\n", strings.ToUpper(username))
+			fmt.Fprintf(f.writer, "%s\n", strings.Repeat("-", 50))
+
+			if result.IsFirstRun {
+				fmt.Fprintf(f.writer, "First run - baseline established with %d starred repositories.\n",
+					result.TotalRepositories)
+				fmt.Fprintf(f.writer, "Run again to detect newly starred repositories.\n")
+			} else {
+				// Get new repositories from changes
+				var newRepos []storage.Repository
+				if result.Changes != nil {
+					newRepos = result.Changes.NewStars
+				}
+
+				if len(newRepos) == 0 {
+					fmt.Fprintf(f.writer, "No new starred repositories found.\n")
+					fmt.Fprintf(f.writer, "Total repositories: %d\n", result.TotalRepositories)
+				} else {
+					fmt.Fprintf(f.writer, "🌟 %d new starred repositories!\n\n", len(newRepos))
+
+					// Sort by starred date (most recent first)
+					sorted := make([]storage.Repository, len(newRepos))
+					copy(sorted, newRepos)
+					sort.Slice(sorted, func(i, j int) bool {
+						return sorted[i].StarredAt.After(sorted[j].StarredAt)
+					})
+
+					for _, repo := range sorted {
+						f.formatRepository(repo, "added")
+					}
+
+					fmt.Fprintf(f.writer, "Total repositories: %d\n", result.TotalRepositories)
+				}
+
+				if !result.PreviousCheck.IsZero() {
+					fmt.Fprintf(f.writer, "Previous check: %s\n", result.PreviousCheck.Format("2006-01-02 15:04:05"))
+				}
+			}
+
+			// Add separator between users (except for the last one)
+			if i < len(usernames)-1 {
+				fmt.Fprintf(f.writer, "\n%s\n\n", strings.Repeat("=", 80))
+			}
+		}
+	}
+
+	return nil
+}
