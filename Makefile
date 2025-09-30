@@ -40,17 +40,17 @@ install: build
 
 # Docker build targets
 docker-build:
-	UPX_VERSION=${UPX_VERSION} ./scripts/docker-build.sh local
+	./scripts/docker-build.sh local
 
 docker-build-multiarch:
-	UPX_VERSION=${UPX_VERSION} ./scripts/docker-build.sh test
+	./scripts/docker-build.sh test
 
 docker-push:
-	UPX_VERSION=${UPX_VERSION} ./scripts/docker-build.sh push
+	./scripts/docker-build.sh push
 
 docker-push-version:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make docker-push-version VERSION=v1.0.0"; exit 1; fi
-	UPX_VERSION=${UPX_VERSION} ./scripts/docker-build.sh push $(VERSION)
+	./scripts/docker-build.sh push $(VERSION)
 
 # Docker development
 docker-dev:
@@ -85,7 +85,6 @@ help:
 	@echo "  help               Show this help message"
 	@echo ""
 	@echo "Variables:"
-	@echo "  UPX_VERSION        UPX version for Docker builds (default: 5.0.2)"
 	@echo "  VERSION            Version tag for docker-push-version"
 
 # Default target

@@ -106,11 +106,8 @@ make docker-push
 # Build and push with version tag
 make docker-push-version VERSION=v1.0.0
 
-# Build with custom UPX version
-UPX_VERSION=4.2.4 make docker-build
-
-# Build with environment variables
-UPX_VERSION=5.0.2 VERSION=v1.2.0 make docker-push-version
+# Build with version tag
+VERSION=v1.2.0 make docker-push-version
 ```
 
 ## Usage

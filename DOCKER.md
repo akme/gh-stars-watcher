@@ -32,14 +32,11 @@ This document summarizes the Docker multi-architecture implement### Security F##
 
 **Build Process**:
 1. Multi-stage build with Go 1.25.1 Alpine builder
-2. Downloads architecture-specific UPX binary (configurable version, default: 5.0.2)
+2. Installs UPX from Alpine package repository (version 5.0.2)
 3. Builds static binary with proper GOOS/GOARCH
 4. Compresses binary (except for ARM due to compatibility)
 5. Creates minimal user files and CA certificates for scratch compatibility
 6. Creates ultra-minimal final image with scratch base (2.7MB total)
-
-**Build Arguments**:
-- `UPX_VERSION`: UPX version to download and use (default: 5.0.2)
 
 ### 2. .dockerignore
 **Location**: `/.dockerignore`
@@ -70,8 +67,8 @@ This document summarizes the Docker multi-architecture implement### Security F##
 ./scripts/docker-build.sh test         # Test build without output
 
 # With custom UPX version
-UPX_VERSION=4.2.4 ./scripts/docker-build.sh local
-UPX_VERSION=5.0.2 ./scripts/docker-build.sh push
+./scripts/docker-build.sh local
+./scripts/docker-build.sh push
 ```
 
 ### 4. GitHub Actions Workflow
@@ -195,11 +192,11 @@ make docker-push
 # Push with version
 make docker-push-version VERSION=v1.0.0
 
-# Push with custom UPX version
-UPX_VERSION=4.2.4 make docker-push
+# Push to registry
+make docker-push
 
-# Push with both version and UPX version
-UPX_VERSION=5.0.2 make docker-push-version VERSION=v1.0.0
+# Push with version tag
+make docker-push-version VERSION=v1.0.0
 ```
 
 ## Testing Results

@@ -6,7 +6,6 @@ set -e
 # Configuration
 IMAGE_NAME="ghcr.io/akme/gh-stars-watcher"
 PLATFORMS="linux/amd64,linux/arm64,linux/arm/v7"
-UPX_VERSION="${UPX_VERSION:-5.0.2}"
 
 # Check if buildx is available
 if ! docker buildx version > /dev/null 2>&1; then
@@ -36,7 +35,6 @@ build_and_push() {
     
     docker buildx build \
         --platform "$PLATFORMS" \
-        --build-arg UPX_VERSION="$UPX_VERSION" \
         --tag "$IMAGE_NAME:$tag" \
         $push_flag \
         --progress=plain \
@@ -66,7 +64,6 @@ case "${1:-local}" in
         echo "🧪 Test build (no output)..."
         docker buildx build \
             --platform "$PLATFORMS" \
-            --build-arg UPX_VERSION="$UPX_VERSION" \
             --progress=plain \
             .
         ;;
@@ -78,14 +75,10 @@ case "${1:-local}" in
         echo "  push   - Build and push to registry"
         echo "  test   - Test build without creating image"
         echo ""
-        echo "Environment Variables:"
-        echo "  UPX_VERSION - UPX version to use (default: $UPX_VERSION)"
-        echo ""
         echo "Examples:"
         echo "  $0 local"
         echo "  $0 push"
         echo "  $0 push v1.0.0"
-        echo "  UPX_VERSION=4.2.4 $0 local"
         exit 1
         ;;
 esac

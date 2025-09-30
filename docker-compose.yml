@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - UPX_VERSION=${UPX_VERSION:-5.0.2}
       platforms:
         - linux/amd64
         - linux/arm64
@@ -26,8 +24,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
-      args:
-        - UPX_VERSION=${UPX_VERSION:-5.0.2}
     image: gh-stars-watcher:dev
     working_dir: /app
     volumes:
