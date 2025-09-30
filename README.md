@@ -1,5 +1,11 @@
 # GitHub Stars Monitor
 
+[![Go version](https://img.shields.io/github/go-mod/go-version/akme/gh-stars-watcher?style=flat-square)](https://github.com/akme/gh-stars-watcher/blob/main/go.mod)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/akme/gh-stars-watcher/docker.yml?branch=main&style=flat-square&label=build)](https://github.com/akme/gh-stars-watcher/actions/workflows/docker.yml)
+[![Docker Image](https://img.shields.io/badge/docker-2.95MB-blue?style=flat-square&logo=docker)](https://github.com/akme/gh-stars-watcher/pkgs/container/gh-stars-watcher)
+[![License](https://img.shields.io/github/license/akme/gh-stars-watcher?style=flat-square)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/akme/gh-stars-watcher?style=flat-square)](https://goreportcard.com/report/github.com/akme/gh-stars-watcher)
+
 A high-performance command-line tool that tracks changes in GitHub users' starred repositories, showing only newly starred repositories between runs. Designed for automation, monitoring workflows, and integration with other development tools.
 
 ## Features
