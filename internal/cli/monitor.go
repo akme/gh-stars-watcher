@@ -199,18 +199,15 @@ func createMonitoringService() (*monitor.Service, error) {
 	// Adjust logging configuration based on CLI flags
 	if quiet {
 		cfg.Logging.LogLevel = "error"
-		cfg.Logging.EnableAuditLog = false
 		cfg.Logging.EnablePerformanceMetrics = false
 		cfg.Logging.LogAPICallsSaved = false
 	} else if verbose {
 		cfg.Logging.LogLevel = "debug"
-		cfg.Logging.EnableAuditLog = true
 		cfg.Logging.EnablePerformanceMetrics = true
 		cfg.Logging.LogAPICallsSaved = true
 	} else {
 		// Normal mode - less verbose than current default
 		cfg.Logging.LogLevel = "warn"
-		cfg.Logging.EnableAuditLog = false
 		cfg.Logging.EnablePerformanceMetrics = false
 		cfg.Logging.LogAPICallsSaved = false
 	}

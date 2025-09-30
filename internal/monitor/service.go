@@ -205,7 +205,6 @@ func (s *Service) MonitorUser(ctx context.Context, username, stateFilePath strin
 		FullSyncInterval:   previousState.FullSyncInterval,
 		LastIncrementalAt:  previousState.LastIncrementalAt,
 		APICallsSaved:      previousState.APICallsSaved,
-		TimestampUpdates:   previousState.TimestampUpdates,
 	}
 
 	// Update timestamps based on fetch type and results
@@ -221,13 +220,11 @@ func (s *Service) MonitorUser(ctx context.Context, username, stateFilePath strin
 	if len(currentRepos) > 0 {
 		mostRecent := updatedState.GetMostRecentStarredAt()
 		if mostRecent.After(updatedState.LastStarredAt) {
-			if s.config.Logging.EnableAuditLog {
-				s.logInfo("Updating last starred timestamp",
-					"from", updatedState.LastStarredAt,
-					"to", mostRecent,
-					"new_stars", len(changes.NewStars),
-					"api_calls_saved", apiCallsSaved)
-			}
+			s.logDebug("Updating last starred timestamp",
+				"from", updatedState.LastStarredAt,
+				"to", mostRecent,
+				"new_stars", len(changes.NewStars),
+				"api_calls_saved", apiCallsSaved)
 			updatedState.UpdateLastStarredAt(mostRecent, len(changes.NewStars), apiCallsSaved, "repository_update")
 		}
 	}
@@ -296,12 +293,6 @@ func (s *Service) migrateStateToIncrementalFields(state *storage.UserState) {
 		state.FullSyncInterval = 24 // Default 24 hours
 		migrated = true
 		s.logInfo("Migrated state file to enable incremental fetching", "interval", "24h")
-	}
-
-	// Initialize empty TimestampUpdates slice if nil
-	if state.TimestampUpdates == nil {
-		state.TimestampUpdates = make([]storage.TimestampUpdate, 0)
-		migrated = true
 	}
 
 	if migrated {

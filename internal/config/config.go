@@ -62,9 +62,6 @@ type LoggingConfig struct {
 	// LogFormat specifies the log format (json, text)
 	LogFormat string `json:"log_format" yaml:"log_format"`
 
-	// EnableAuditLog enables audit logging for timestamp updates
-	EnableAuditLog bool `json:"enable_audit_log" yaml:"enable_audit_log"`
-
 	// EnablePerformanceMetrics enables performance metric collection
 	EnablePerformanceMetrics bool `json:"enable_performance_metrics" yaml:"enable_performance_metrics"`
 
@@ -102,7 +99,6 @@ func DefaultConfig() *Config {
 		Logging: LoggingConfig{
 			LogLevel:                 "info",
 			LogFormat:                "text",
-			EnableAuditLog:           true,
 			EnablePerformanceMetrics: true,
 			LogAPICallsSaved:         true,
 		},
